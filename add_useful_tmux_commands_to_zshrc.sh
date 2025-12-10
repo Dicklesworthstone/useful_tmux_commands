@@ -20,6 +20,51 @@ TMUX_MARKER_END="# === NTM-TMUX-TWEAKS-END ==="
 # Base URL for fetching bundled files (edit this if you fork the repo)
 NTM_REPO_BASE="${NTM_REPO_BASE:-https://raw.githubusercontent.com/Dicklesworthstone/useful_tmux_commands/main}"
 
+# Fetch the default command palette config from the repo (install-time)
+fetch_default_palette() {
+  local dest="$1"
+  local url="${NTM_REPO_BASE}/command_palette.md"
+
+  # Try curl first, then wget as fallback (try both if curl fails)
+  if command -v curl &>/dev/null && curl -fsSL "$url" -o "$dest" 2>/dev/null; then
+    return 0
+  fi
+  if command -v wget &>/dev/null && wget -q "$url" -O "$dest" 2>/dev/null; then
+    return 0
+  fi
+
+  return 1
+}
+
+# Write a minimal sample palette as offline fallback (install-time)
+write_sample_palette() {
+  local dest="$1"
+  cat > "$dest" <<'PALETTE_FALLBACK'
+# NTM Command Palette - Sample Config
+#
+# Format: ### command_key | Display Label
+# Followed by prompt text on subsequent lines
+#
+# Fetch the full config: ntm-palette-init
+
+## Quick Start
+
+### fresh_review | Fresh Eyes Review
+Carefully reread the latest code changes and fix any obvious bugs or confusion you spot.
+
+### fix_bug | Fix the Bug
+Diagnose the root cause of the reported issue and implement a real fix, not a workaround.
+
+### git_commit | Commit Changes
+Commit all changed files with detailed commit messages and push.
+
+## Coordination
+
+### status_update | Status Update
+Summarize current progress, blockers, and next steps.
+PALETTE_FALLBACK
+}
+
 # Check if the command block is already installed
 is_installed() {
   grep -q "$MARKER_START" "$ZSHRC" 2>/dev/null && \
@@ -362,11 +407,11 @@ auto_setup_palette() {
   # Fetch default config from repo if not exists
   if [[ ! -f "$palette_config" ]]; then
     echo "Fetching default command palette config..."
-    if _ntm_fetch_default_palette "$palette_config"; then
+    if fetch_default_palette "$palette_config"; then
       echo "✓ Created palette config: $palette_config"
     else
-      echo "⚠ Could not fetch palette config from repo; writing local sample instead."
-      _ntm_write_sample_palette "$palette_config"
+      echo "⚠ Could not fetch from repo; writing sample config instead."
+      write_sample_palette "$palette_config"
       echo "✓ Wrote sample palette to: $palette_config"
     fi
   else
@@ -1730,21 +1775,28 @@ _ntm_fetch_default_palette() {
 _ntm_write_sample_palette() {
   local dest="$1"
   cat > "$dest" <<'PALETTE_FALLBACK'
+# NTM Command Palette - Sample Config
+#
+# Format: ### command_key | Display Label
+# Followed by prompt text on subsequent lines
+#
+# Fetch the full config: ntm-palette-init
+
 ## Quick Start
 
 ### fresh_review | Fresh Eyes Review
-Carefully reread the latest code changes and fix any obvious bugs or confusion you spot. Be specific and pragmatic.
+Carefully reread the latest code changes and fix any obvious bugs or confusion you spot.
 
 ### fix_bug | Fix the Bug
 Diagnose the root cause of the reported issue and implement a real fix, not a workaround.
 
-### run_tests | Run Tests
-Run the full test suite (or the closest equivalent) and report any failures with logs.
+### git_commit | Commit Changes
+Commit all changed files with detailed commit messages and push.
 
 ## Coordination
 
 ### status_update | Status Update
-Summarize current progress, blockers, and next steps for the team.
+Summarize current progress, blockers, and next steps.
 PALETTE_FALLBACK
 }
 
