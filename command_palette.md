@@ -1,3 +1,15 @@
+# NTM Command Palette
+#
+# Format:
+#   ## Category Name
+#   ### command_key | Display Label
+#   The prompt text (can be multiple lines)
+#
+# Usage: ntm-palette <session> or press F6 in tmux
+#
+# This is the default command palette bundled with NTM.
+# Edit this file to customize, or fork the repo to create your own defaults.
+
 ## Analysis & Review
 
 ### fresh_review | Fresh Review

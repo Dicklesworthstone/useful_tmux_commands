@@ -25,10 +25,12 @@ fetch_default_palette() {
   local dest="$1"
   local url="${NTM_REPO_BASE}/command_palette.md"
 
-  if command -v curl &>/dev/null; then
-    curl -fsSL "$url" -o "$dest" 2>/dev/null && return 0
-  elif command -v wget &>/dev/null; then
-    wget -q "$url" -O "$dest" 2>/dev/null && return 0
+  # Try curl first, then wget as fallback (try both if curl fails)
+  if command -v curl &>/dev/null && curl -fsSL "$url" -o "$dest" 2>/dev/null; then
+    return 0
+  fi
+  if command -v wget &>/dev/null && wget -q "$url" -O "$dest" 2>/dev/null; then
+    return 0
   fi
 
   echo "Warning: Could not fetch default palette (no curl/wget or network issue)" >&2
@@ -1361,7 +1363,8 @@ copy-pane-output() {
   _ntm_check_tmux || return 1
 
   local session="$1"
-  local pane="${2:-0}"
+  # Leave pane empty by default so we can honor pane-base-index
+  local pane="${2:-}"
   local lines="${3:-500}"
 
   if [[ -z "$session" ]]; then
@@ -1387,6 +1390,12 @@ copy-pane-output() {
       echo "error: could not determine default pane for session '$session'" >&2
       return 1
     fi
+  fi
+
+  # Validate pane index is numeric
+  if ! [[ "$pane" = <-> ]]; then
+    echo "error: pane index must be numeric (got '$pane')" >&2
+    return 1
   fi
 
   local target="$session:$first_win.$pane"
@@ -1720,10 +1729,12 @@ _ntm_fetch_default_palette() {
   local dest="$1"
   local url="${_NTM_REPO_BASE}/command_palette.md"
 
-  if command -v curl &>/dev/null; then
-    curl -fsSL "$url" -o "$dest" 2>/dev/null && return 0
-  elif command -v wget &>/dev/null; then
-    wget -q "$url" -O "$dest" 2>/dev/null && return 0
+  # Try curl first, then wget as fallback (try both if curl fails)
+  if command -v curl &>/dev/null && curl -fsSL "$url" -o "$dest" 2>/dev/null; then
+    return 0
+  fi
+  if command -v wget &>/dev/null && wget -q "$url" -O "$dest" 2>/dev/null; then
+    return 0
   fi
 
   echo "Could not fetch default palette (no curl/wget or network issue)" >&2
