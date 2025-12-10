@@ -29,9 +29,15 @@ Easy mode automatically:
 - ✅ Installs tmux and fzf (via Homebrew/apt/dnf/pacman)
 - ✅ Adds recommended tmux.conf settings (mouse support, colors, status bar)
 - ✅ Sets up F6 keybinding for the command palette
-- ✅ Creates the NTM command palette directory
+- ✅ Fetches default command palette config from repo (`~/.config/ntm/command_palette.md`)
 
-After installation, run `source ~/.zshrc` and then `ncpinit` to create your command palette config.
+After installation, run `source ~/.zshrc` and press **F6** in any tmux session to open the command palette.
+
+**Customizing defaults:** Fork the repo, edit `command_palette.md`, then install with:
+```bash
+NTM_REPO_BASE="https://raw.githubusercontent.com/YOUR_USERNAME/useful_tmux_commands/main" \
+  curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/useful_tmux_commands/main/add_useful_tmux_commands_to_zshrc.sh | bash -s -- --easy
+```
 
 ---
 

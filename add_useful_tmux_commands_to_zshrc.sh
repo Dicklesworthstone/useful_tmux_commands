@@ -17,6 +17,24 @@ MARKER_END="# === NAMED-TMUX-COMMANDS-END ==="
 TMUX_MARKER_START="# === NTM-TMUX-TWEAKS-START ==="
 TMUX_MARKER_END="# === NTM-TMUX-TWEAKS-END ==="
 
+# Base URL for fetching bundled files (edit this if you fork the repo)
+NTM_REPO_BASE="${NTM_REPO_BASE:-https://raw.githubusercontent.com/Dicklesworthstone/useful_tmux_commands/main}"
+
+# Fetch the default command palette config from the repo
+fetch_default_palette() {
+  local dest="$1"
+  local url="${NTM_REPO_BASE}/command_palette.md"
+
+  if command -v curl &>/dev/null; then
+    curl -fsSL "$url" -o "$dest" 2>/dev/null && return 0
+  elif command -v wget &>/dev/null; then
+    wget -q "$url" -O "$dest" 2>/dev/null && return 0
+  fi
+
+  echo "Warning: Could not fetch default palette (no curl/wget or network issue)" >&2
+  return 1
+}
+
 # Check if the command block is already installed
 is_installed() {
   grep -q "$MARKER_START" "$ZSHRC" 2>/dev/null && \
@@ -356,44 +374,14 @@ auto_setup_palette() {
   # Create config directory
   mkdir -p "$palette_dir"
 
-  # Create sample config if not exists
+  # Fetch default config from repo if not exists
   if [[ ! -f "$palette_config" ]]; then
-    echo "Creating command palette config..."
-    cat > "$palette_config" << 'EASY_PALETTE'
-# NTM Command Palette
-#
-# Format:
-#   ## Category Name
-#   ### command_key | Display Label
-#   The prompt text (can be multiple lines)
-
-## Code Review
-
-### fresh_review | Fresh Eyes Review
-I want you to carefully read over all of the code with "fresh eyes" looking for any obvious bugs, errors, problems, issues, confusion, etc. Carefully fix anything you uncover.
-
-### check_other_agents | Review Other Agents' Work
-Review the code written by your fellow agents and check for any issues, bugs, errors, problems, inefficiencies, security problems, reliability issues, etc.
-
-## Git Operations
-
-### git_commit | Commit Changes
-Commit all changed files in a series of logically connected groupings with detailed commit messages for each and then push.
-
-## Task Management
-
-### do_all | Execute Everything
-Please do ALL pending tasks now. Keep a detailed TODO list to track progress and complete all tasks.
-
-### next_task | Work on Next Task
-Pick the next task you can actually do usefully now and start coding on it immediately.
-
-## Quick Commands
-
-### ultrathink | Enable Deep Thinking
-Use ultrathink.
-EASY_PALETTE
-    echo "✓ Created palette config: $palette_config"
+    echo "Fetching default command palette config..."
+    if fetch_default_palette "$palette_config"; then
+      echo "✓ Created palette config: $palette_config"
+    else
+      echo "⚠ Could not fetch palette config. Run 'ntm-palette-init' manually later."
+    fi
   else
     echo "✓ Palette config already exists"
   fi
@@ -1724,6 +1712,24 @@ _ntm_init_colors() {
 _ntm_init_icons
 _ntm_init_colors
 
+# Base URL for fetching bundled files (override with NTM_REPO_BASE env var)
+_NTM_REPO_BASE="${NTM_REPO_BASE:-https://raw.githubusercontent.com/Dicklesworthstone/useful_tmux_commands/main}"
+
+# Fetch default command palette config from repo
+_ntm_fetch_default_palette() {
+  local dest="$1"
+  local url="${_NTM_REPO_BASE}/command_palette.md"
+
+  if command -v curl &>/dev/null; then
+    curl -fsSL "$url" -o "$dest" 2>/dev/null && return 0
+  elif command -v wget &>/dev/null; then
+    wget -q "$url" -O "$dest" 2>/dev/null && return 0
+  fi
+
+  echo "Could not fetch default palette (no curl/wget or network issue)" >&2
+  return 1
+}
+
 # Check if fzf is installed
 _ntm_check_fzf() {
   command -v fzf &>/dev/null
@@ -2291,7 +2297,7 @@ ${_NTM_ICON_GEMINI}:gmi:$_NTM_ICON_GEMINI  Gemini (gmi)       │ google agents 
   echo -e "\n${_C_GREEN}$_NTM_ICON_CHECK${_C_RESET} ${_C_BOLD}Sent to $target_type agents${_C_RESET}"
 }
 
-# Initialize sample config
+# Initialize/reset command palette config by fetching from repo
 ntm-palette-init() {
   local config_file="${1:-$_NTM_PALETTE_CONFIG}"
   local config_dir
@@ -2310,80 +2316,20 @@ ntm-palette-init() {
 
   mkdir -p "$config_dir"
 
-  cat > "$config_file" << 'PALETTE_CONFIG'
-# NTM Command Palette
-#
-# Format:
-#   ## Category Name
-#   ### command_key | Display Label
-#   The prompt text (can be multiple lines)
-#
-# Usage: ntm-palette <session> or press F6 in tmux
-
-## Code Review
-
-### fresh_review | Fresh Eyes Review
-Great, now I want you to carefully read over all of the new code you just wrote and other existing code you just modified with "fresh eyes" looking super carefully for any obvious bugs, errors, problems, issues, confusion, etc. Carefully fix anything you uncover. Use ultrathink.
-
-### check_other_agents | Review Other Agents' Work
-Ok can you now turn your attention to reviewing the code written by your fellow agents and checking for any issues, bugs, errors, problems, inefficiencies, security problems, reliability issues, etc. and carefully diagnose their underlying root causes using first-principle analysis and then fix or revise them if necessary? Use ultrathink.
-
-### randomly_inspect | Random Code Inspection
-I want you to sort of randomly explore the code files in this project, choosing code files to deeply investigate and understand. Once you understand the purpose of the code, do a super careful check with "fresh eyes" to find any obvious bugs, problems, errors, issues, silly mistakes, etc. and then systematically correct them.
-
-## Git Operations
-
-### git_commit | Commit Changes
-Now, based on your knowledge of the project, commit all changed files now in a series of logically connected groupings with super detailed commit messages for each and then push. Take your time to do it right. Don't edit the code at all. Use ultrathink.
-
-### do_gh_flow | Full GitHub Flow
-Do all the GitHub stuff: commit, deploy, create tag, bump version, release, monitor gh actions, compute checksums, etc.
-
-## Task Management
-
-### do_all | Execute Everything
-OK, please do ALL of that now. Keep a super detailed, granular, and complete TODO list of all items so you don't lose track of anything and remember to complete all the tasks and sub-tasks!
-
-### next_task | Work on Next Task
-Pick the next task you can actually do usefully now and start coding on it immediately. Respond to any agent mail messages you've received first.
-
-## Agent Coordination
-
-### check_mail | Check Agent Mail
-Be sure to check your agent mail and to promptly respond if needed to any messages, and also acknowledge any contact requests.
-
-### introduce | Introduce to Agents
-Before doing anything else, read ALL of AGENTS.md, then register with MCP Agent Mail and introduce yourself to the other agents.
-
-## Investigation
-
-### read_and_investigate | Deep Investigation
-First read ALL of the AGENTS.md file and README.md file super carefully! Then use your code investigation agent mode to fully understand the code, technical architecture and purpose of the project.
-
-### fix_bug | Fix Bug
-I want you to very carefully diagnose and then fix the root underlying cause of the bugs/errors shown here, but fix them FOR REAL, not a superficial "bandaid" fix! Here are the details:
-
-## Quick Commands
-
-### ultrathink | Enable Deep Thinking
-Use ultrathink.
-
-### reread_agents | Reread AGENTS.md
-Reread AGENTS.md so it's still fresh in your mind.
-
-## UI/UX
-
-### build_ui | Build World-Class UI
-I want you to do a spectacular job building absolutely world-class UI/UX components, with an intense focus on making the most visually appealing, user-friendly, intuitive, slick, polished, "Stripe level" of quality UI/UX possible.
-
-### scrutinize_ui | Scrutinize UI/UX
-Super carefully scrutinize every aspect of the application workflow and look for things that seem sub-optimal, things that could obviously be improved from a user-friendliness and intuitiveness standpoint.
-PALETTE_CONFIG
-
-  echo "✓ Created: $config_file"
-  echo ""
-  echo "Edit this file to customize your commands."
-  echo "Run 'ntm-palette <session>' or press F6 in tmux."
+  echo "Fetching default command palette from repo..."
+  if _ntm_fetch_default_palette "$config_file"; then
+    echo "✓ Created: $config_file"
+    echo ""
+    echo "Edit this file to customize your commands."
+    echo "Run 'ntm-palette <session>' or press F6 in tmux."
+    echo ""
+    echo "Tip: Fork the repo and set NTM_REPO_BASE to customize defaults."
+  else
+    echo "Failed to fetch palette config." >&2
+    echo "Check your network connection or visit:" >&2
+    echo "  ${_NTM_REPO_BASE}/command_palette.md" >&2
+    return 1
+  fi
 }
 
 # Setup tmux keybinding (default F6)
