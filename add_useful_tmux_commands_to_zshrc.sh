@@ -20,23 +20,6 @@ TMUX_MARKER_END="# === NTM-TMUX-TWEAKS-END ==="
 # Base URL for fetching bundled files (edit this if you fork the repo)
 NTM_REPO_BASE="${NTM_REPO_BASE:-https://raw.githubusercontent.com/Dicklesworthstone/useful_tmux_commands/main}"
 
-# Fetch the default command palette config from the repo
-fetch_default_palette() {
-  local dest="$1"
-  local url="${NTM_REPO_BASE}/command_palette.md"
-
-  # Try curl first, then wget as fallback (try both if curl fails)
-  if command -v curl &>/dev/null && curl -fsSL "$url" -o "$dest" 2>/dev/null; then
-    return 0
-  fi
-  if command -v wget &>/dev/null && wget -q "$url" -O "$dest" 2>/dev/null; then
-    return 0
-  fi
-
-  echo "Warning: Could not fetch default palette (no curl/wget or network issue)" >&2
-  return 1
-}
-
 # Check if the command block is already installed
 is_installed() {
   grep -q "$MARKER_START" "$ZSHRC" 2>/dev/null && \
@@ -379,10 +362,12 @@ auto_setup_palette() {
   # Fetch default config from repo if not exists
   if [[ ! -f "$palette_config" ]]; then
     echo "Fetching default command palette config..."
-    if fetch_default_palette "$palette_config"; then
+    if _ntm_fetch_default_palette "$palette_config"; then
       echo "✓ Created palette config: $palette_config"
     else
-      echo "⚠ Could not fetch palette config. Run 'ntm-palette-init' manually later."
+      echo "⚠ Could not fetch palette config from repo; writing local sample instead."
+      _ntm_write_sample_palette "$palette_config"
+      echo "✓ Wrote sample palette to: $palette_config"
     fi
   else
     echo "✓ Palette config already exists"
@@ -1741,6 +1726,28 @@ _ntm_fetch_default_palette() {
   return 1
 }
 
+# Write a minimal built-in sample palette (offline fallback)
+_ntm_write_sample_palette() {
+  local dest="$1"
+  cat > "$dest" <<'PALETTE_FALLBACK'
+## Quick Start
+
+### fresh_review | Fresh Eyes Review
+Carefully reread the latest code changes and fix any obvious bugs or confusion you spot. Be specific and pragmatic.
+
+### fix_bug | Fix the Bug
+Diagnose the root cause of the reported issue and implement a real fix, not a workaround.
+
+### run_tests | Run Tests
+Run the full test suite (or the closest equivalent) and report any failures with logs.
+
+## Coordination
+
+### status_update | Status Update
+Summarize current progress, blockers, and next steps for the team.
+PALETTE_FALLBACK
+}
+
 # Check if fzf is installed
 _ntm_check_fzf() {
   command -v fzf &>/dev/null
@@ -2330,17 +2337,17 @@ ntm-palette-init() {
   echo "Fetching default command palette from repo..."
   if _ntm_fetch_default_palette "$config_file"; then
     echo "✓ Created: $config_file"
-    echo ""
-    echo "Edit this file to customize your commands."
-    echo "Run 'ntm-palette <session>' or press F6 in tmux."
-    echo ""
-    echo "Tip: Fork the repo and set NTM_REPO_BASE to customize defaults."
   else
-    echo "Failed to fetch palette config." >&2
-    echo "Check your network connection or visit:" >&2
-    echo "  ${_NTM_REPO_BASE}/command_palette.md" >&2
-    return 1
+    echo "⚠ Could not fetch palette from repo; writing built-in sample instead."
+    _ntm_write_sample_palette "$config_file"
+    echo "✓ Wrote sample palette: $config_file"
   fi
+
+  echo ""
+  echo "Edit this file to customize your commands."
+  echo "Run 'ntm-palette <session>' or press F6 in tmux."
+  echo ""
+  echo "Tip: Fork the repo and set NTM_REPO_BASE to customize defaults."
 }
 
 # Setup tmux keybinding (default F6)

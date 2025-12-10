@@ -35,8 +35,8 @@ After installation, run `source ~/.zshrc` and press **F6** in any tmux session t
 
 **Customizing defaults:** Fork the repo, edit `command_palette.md`, then install with:
 ```bash
-NTM_REPO_BASE="https://raw.githubusercontent.com/YOUR_USERNAME/useful_tmux_commands/main" \
-  curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/useful_tmux_commands/main/add_useful_tmux_commands_to_zshrc.sh | bash -s -- --easy
+curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/useful_tmux_commands/main/add_useful_tmux_commands_to_zshrc.sh | \
+  NTM_REPO_BASE="https://raw.githubusercontent.com/YOUR_USERNAME/useful_tmux_commands/main" bash -s -- --easy
 ```
 
 ---
