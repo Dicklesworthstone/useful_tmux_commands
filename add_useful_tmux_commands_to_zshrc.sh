@@ -246,6 +246,10 @@ fi
 export LANG="${LANG:-en_US.UTF-8}"
 export LC_ALL="${LC_ALL:-en_US.UTF-8}"
 
+# Default locations for logs and stored prompts
+_NTM_LOG_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/ntm-logs"
+_NTM_PROMPT_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/ntm-prompts"
+
 # ============================================================================
 # Agent Aliases
 # ============================================================================
