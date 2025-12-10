@@ -280,15 +280,12 @@ _ntm_auto_install_tmux() {
     fi
   else
     # Generic Linux: detect a reasonable package manager
-    local pkg cmd
     if command -v apt-get &>/dev/null; then
-      pkg="apt-get"
       echo "Running: sudo apt-get update && sudo apt-get install -y tmux"
       if sudo apt-get update && sudo apt-get install -y tmux; then
         command -v tmux &>/dev/null && return 0
       fi
     elif command -v apt &>/dev/null; then
-      pkg="apt"
       echo "Running: sudo apt update && sudo apt install -y tmux"
       if sudo apt update && sudo apt install -y tmux; then
         command -v tmux &>/dev/null && return 0
