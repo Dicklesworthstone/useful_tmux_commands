@@ -579,6 +579,8 @@ _ntm_backup_file() {
 
 alias cc='NODE_OPTIONS="--max-old-space-size=32768" ENABLE_BACKGROUND_TASKS=1 claude --dangerously-skip-permissions'
 alias cod='codex --dangerously-bypass-approvals-and-sandbox -m gpt-5.1-codex-max -c model_reasoning_effort="high" -c model_reasoning_summary_format=experimental --enable web_search_request'
+alias agy='agy --model "Gemini 3.1 Pro (High)" --dangerously-skip-permissions'
+# gmi (Gemini CLI) retired 2026-06-18; use agy (Antigravity CLI). gmi kept for legacy.
 alias gmi='gemini --yolo'
 
 # ============================================================================
