@@ -895,19 +895,20 @@ spawn-agents-in-named-tmux() {
   local session="$1"
   local cc_count="${2:-0}"
   local cod_count="${3:-0}"
-  local gmi_count="${4:-0}"
+  local agy_count="${4:-0}"
+  local gmi_count="${5:-0}"
   local base="${PROJECTS_BASE:-$HOME/projects}"
   local dir="$base/$session"
 
   if [[ -z "$session" ]]; then
-    echo "usage: spawn-agents-in-named-tmux <session> <cc-count> <cod-count> [gmi-count]" >&2
-    echo "       sat <session> <cc-count> <cod-count> [gmi-count]" >&2
+    echo "usage: spawn-agents-in-named-tmux <session> <cc-count> <cod-count> [agy-count] [gmi-count]" >&2
+    echo "       sat <session> <cc-count> <cod-count> [agy-count] [gmi-count]" >&2
     return 1
   fi
 
   _ntm_validate_session_name "$session" || return 1
 
-  for n in "$cc_count" "$cod_count" "$gmi_count"; do
+  for n in "$cc_count" "$cod_count" "$agy_count" "$gmi_count"; do
     if ! [[ "$n" = <-> ]]; then
       echo "error: counts must be non-negative integers (got '$n')" >&2
       return 1
@@ -931,7 +932,7 @@ spawn-agents-in-named-tmux() {
     esac
   fi
 
-  local total_agents=$((cc_count + cod_count + gmi_count))
+  local total_agents=$((cc_count + cod_count + agy_count + gmi_count))
   if [[ "$total_agents" -le 0 ]]; then
     echo "error: nothing to spawn (all counts are zero)" >&2
     return 1
@@ -974,7 +975,7 @@ spawn-agents-in-named-tmux() {
   local project="$session"
   local pane_id
 
-  echo "Launching agents: ${cc_count}x cc, ${cod_count}x cod, ${gmi_count}x gmi..."
+  echo "Launching agents: ${cc_count}x cc, ${cod_count}x cod, ${agy_count}x agy, ${gmi_count}x gmi..."
 
   for ((i=1; i<=cc_count; i++)); do
     pane_id=${pane_ids[$arr_idx]}
@@ -987,6 +988,13 @@ spawn-agents-in-named-tmux() {
     pane_id=${pane_ids[$arr_idx]}
     tmux select-pane -t "$win_target.$pane_id" -T "${project}__cod_${i}"
     tmux send-keys -t "$win_target.$pane_id" "cd \"$dir\" && cod" C-m
+    ((arr_idx++))
+  done
+
+  for ((i=1; i<=agy_count; i++)); do
+    pane_id=${pane_ids[$arr_idx]}
+    tmux select-pane -t "$win_target.$pane_id" -T "${project}__agy_${i}"
+    tmux send-keys -t "$win_target.$pane_id" "cd \"$dir\" && agy" C-m
     ((arr_idx++))
   done
 
@@ -1013,13 +1021,14 @@ add-agents-to-named-tmux() {
   local session="$1"
   local cc_count="${2:-0}"
   local cod_count="${3:-0}"
-  local gmi_count="${4:-0}"
+  local agy_count="${4:-0}"
+  local gmi_count="${5:-0}"
   local base="${PROJECTS_BASE:-$HOME/projects}"
   local dir="$base/$session"
 
   if [[ -z "$session" ]]; then
-    echo "usage: add-agents-to-named-tmux <session> <cc-count> <cod-count> [gmi-count]" >&2
-    echo "       ant <session> <cc-count> <cod-count> [gmi-count]" >&2
+    echo "usage: add-agents-to-named-tmux <session> <cc-count> <cod-count> [agy-count] [gmi-count]" >&2
+    echo "       ant <session> <cc-count> <cod-count> [agy-count] [gmi-count]" >&2
     return 1
   fi
 
@@ -1029,14 +1038,14 @@ add-agents-to-named-tmux() {
     return 1
   fi
 
-  for n in "$cc_count" "$cod_count" "$gmi_count"; do
+  for n in "$cc_count" "$cod_count" "$agy_count" "$gmi_count"; do
     if ! [[ "$n" = <-> ]]; then
       echo "error: counts must be non-negative integers (got '$n')" >&2
       return 1
     fi
   done
 
-  local total_agents=$((cc_count + cod_count + gmi_count))
+  local total_agents=$((cc_count + cod_count + agy_count + gmi_count))
   if [[ "$total_agents" -le 0 ]]; then
     echo "error: nothing to add (all counts are zero)" >&2
     return 1
@@ -1070,6 +1079,14 @@ add-agents-to-named-tmux() {
     tmux send-keys -t "$pane_id" C-m
   done
 
+  for ((i=1; i<=agy_count; i++)); do
+    pane_id=$(tmux split-window -t "$win_target" -c "$dir" -P -F "#{pane_id}")
+    tmux select-layout -t "$win_target" tiled
+    tmux select-pane -t "$pane_id" -T "${session}__agy_added_${i}"
+    tmux send-keys -t "$pane_id" -l "cd \"$dir\" && agy"
+    tmux send-keys -t "$pane_id" C-m
+  done
+
   for ((i=1; i<=gmi_count; i++)); do
     pane_id=$(tmux split-window -t "$win_target" -c "$dir" -P -F "#{pane_id}")
     tmux select-layout -t "$win_target" tiled
@@ -1078,7 +1095,7 @@ add-agents-to-named-tmux() {
     tmux send-keys -t "$pane_id" C-m
   done
 
-  echo "✓ Added ${cc_count}x cc, ${cod_count}x cod, ${gmi_count}x gmi"
+  echo "✓ Added ${cc_count}x cc, ${cod_count}x cod, ${agy_count}x agy, ${gmi_count}x gmi"
 }
 
 # Reconnect to an existing named tmux session
@@ -1168,12 +1185,13 @@ status-named-tmux() {
   echo "─────────────────────────────────────────────────────"
 
   # Count agents by type
-  local cc_count cod_count gmi_count
+  local cc_count cod_count agy_count gmi_count
   cc_count=$(tmux list-panes -s -t "$session" -F '#{pane_title}' | grep -c '__cc' || echo 0)
   cod_count=$(tmux list-panes -s -t "$session" -F '#{pane_title}' | grep -c '__cod' || echo 0)
+  agy_count=$(tmux list-panes -s -t "$session" -F '#{pane_title}' | grep -c '__agy' || echo 0)
   gmi_count=$(tmux list-panes -s -t "$session" -F '#{pane_title}' | grep -c '__gmi' || echo 0)
 
-  echo "Agents: ${cc_count}x cc, ${cod_count}x cod, ${gmi_count}x gmi"
+  echo "Agents: ${cc_count}x cc, ${cod_count}x cod, ${agy_count}x agy, ${gmi_count}x gmi"
   echo ""
 }
 
@@ -1243,6 +1261,10 @@ send-command-to-named-tmux() {
         agent_filter="__cod"
         shift
         ;;
+      --agy)
+        agent_filter="__agy"
+        shift
+        ;;
       --gmi)
         agent_filter="__gmi"
         shift
@@ -1262,13 +1284,14 @@ send-command-to-named-tmux() {
   local cmd="$*"
 
   if [[ -z "$session" ]]; then
-    echo "usage: send-command-to-named-tmux [-s|--skip-first] [--cc|--cod|--gmi] <session> <command...>" >&2
-    echo "       sct [-s] [--cc|--cod|--gmi] <session> <command...>" >&2
+    echo "usage: send-command-to-named-tmux [-s|--skip-first] [--cc|--cod|--agy|--gmi] <session> <command...>" >&2
+    echo "       sct [-s] [--cc|--cod|--agy|--gmi] <session> <command...>" >&2
     echo ""
     echo "Options:"
     echo "  -s, --skip-first  Skip the first (user) pane"
     echo "  --cc              Send only to Claude (cc) panes"
     echo "  --cod             Send only to Codex (cod) panes"
+    echo "  --agy             Send only to Antigravity (agy) panes"
     echo "  --gmi             Send only to Gemini (gmi) panes"
     return 1
   fi
@@ -1348,8 +1371,8 @@ interrupt-agents-in-named-tmux() {
     local pane_id="${entry%%:*}"
     local pane_title="${entry#*:}"
 
-    # Only interrupt agent panes (those with __cc, __cod, or __gmi in title)
-    if [[ "$pane_title" =~ __(cc|cod|gmi) ]]; then
+    # Only interrupt agent panes (those with __cc, __cod, __agy, or __gmi in title)
+    if [[ "$pane_title" =~ __(cc|cod|agy|gmi) ]]; then
       tmux send-keys -t "$pane_id" C-c
       ((count++))
     fi
@@ -1536,8 +1559,8 @@ zoom-pane-in-named-tmux() {
   local target="$2"
 
   if [[ -z "$session" || -z "$target" ]]; then
-    echo "usage: zoom-pane-in-named-tmux <session> <pane-index|cc|cod|gmi>" >&2
-    echo "       znt <session> <pane-index|cc|cod|gmi>" >&2
+    echo "usage: zoom-pane-in-named-tmux <session> <pane-index|cc|cod|agy|gmi>" >&2
+    echo "       znt <session> <pane-index|cc|cod|agy|gmi>" >&2
     return 1
   fi
 
@@ -1592,8 +1615,8 @@ broadcast-prompt() {
   local prompt="$*"
 
   if [[ -z "$session" || -z "$agent_type" || -z "$prompt" ]]; then
-    echo "usage: broadcast-prompt <session> <cc|cod|gmi|all> <prompt...>" >&2
-    echo "       bp <session> <cc|cod|gmi|all> <prompt...>" >&2
+    echo "usage: broadcast-prompt <session> <cc|cod|agy|gmi|all> <prompt...>" >&2
+    echo "       bp <session> <cc|cod|agy|gmi|all> <prompt...>" >&2
     return 1
   fi
 
@@ -1604,6 +1627,9 @@ broadcast-prompt() {
     cod)
       send-command-to-named-tmux --cod "$session" "$prompt"
       ;;
+    agy)
+      send-command-to-named-tmux --agy "$session" "$prompt"
+      ;;
     gmi)
       send-command-to-named-tmux --gmi "$session" "$prompt"
       ;;
@@ -1611,7 +1637,7 @@ broadcast-prompt() {
       send-command-to-named-tmux --skip-first "$session" "$prompt"
       ;;
     *)
-      echo "error: agent type must be cc, cod, gmi, or all" >&2
+      echo "error: agent type must be cc, cod, agy, gmi, or all" >&2
       return 1
       ;;
   esac
@@ -1624,12 +1650,13 @@ quick-project-setup() {
   local project="$1"
   local cc_count="${2:-2}"
   local cod_count="${3:-2}"
-  local gmi_count="${4:-0}"
+  local agy_count="${4:-0}"
+  local gmi_count="${5:-0}"
   local base="${PROJECTS_BASE:-$HOME/projects}"
 
   if [[ -z "$project" ]]; then
-    echo "usage: quick-project-setup <project-name> [cc] [cod] [gmi]" >&2
-    echo "       qps <project-name> [cc] [cod] [gmi]" >&2
+    echo "usage: quick-project-setup <project-name> [cc] [cod] [agy] [gmi]" >&2
+    echo "       qps <project-name> [cc] [cod] [agy] [gmi]" >&2
     echo ""
     echo "Creates project directory, initializes git, and spawns agents"
     return 1
@@ -1660,7 +1687,7 @@ quick-project-setup() {
   fi
 
   # Spawn agents
-  spawn-agents-in-named-tmux "$project" "$cc_count" "$cod_count" "$gmi_count"
+  spawn-agents-in-named-tmux "$project" "$cc_count" "$cod_count" "$agy_count" "$gmi_count"
 }
 
 # ============================================================================
@@ -1699,7 +1726,8 @@ _ntm_init_icons() {
     _NTM_ICON_CROSS=""       # nf-fa-times
     _NTM_ICON_CLAUDE="󰗣"     # nf-md-alpha_c_circle (anthropic-ish)
     _NTM_ICON_CODEX=""       # nf-cod-hubot (openai-ish)
-    _NTM_ICON_GEMINI="󰊤"     # nf-md-google (google)
+    _NTM_ICON_GEMINI="󰊤"     # nf-md-google (gmi, legacy)
+    _NTM_ICON_AGY="󱓞"        # nf-md-rocket-launch (agy, Antigravity)
     _NTM_ICON_ALL="󰕟"        # nf-md-broadcast
     _NTM_ICON_PANE=""        # nf-oct-terminal
     _NTM_ICON_ARROW="❯"       # nf-pl-right_hard_divider
@@ -1716,6 +1744,7 @@ _ntm_init_icons() {
     _NTM_ICON_CLAUDE="C"
     _NTM_ICON_CODEX="O"
     _NTM_ICON_GEMINI="G"
+    _NTM_ICON_AGY="A"
     _NTM_ICON_ALL="*"
     _NTM_ICON_PANE="▢"
     _NTM_ICON_ARROW="›"
@@ -2054,15 +2083,16 @@ _ntm_show_target_menu() {
   echo -e "${_C_CYAN}${V}${_C_RESET}                                                          ${_C_CYAN}${V}${_C_RESET}"
   echo -e "${_C_CYAN}${V}${_C_RESET}   ${_C_BOLD}${_C_BMAGENTA}2${_C_RESET}  ${_C_MAGENTA}$_NTM_ICON_CLAUDE${_C_RESET}  ${_C_BWHITE}Claude${_C_RESET}  ${_C_DIM}(cc)${_C_RESET}   ${_C_DIM}anthropic agents only${_C_RESET}       ${_C_CYAN}${V}${_C_RESET}"
   echo -e "${_C_CYAN}${V}${_C_RESET}   ${_C_BOLD}${_C_BBLUE}3${_C_RESET}  ${_C_BLUE}$_NTM_ICON_CODEX${_C_RESET}  ${_C_BWHITE}Codex${_C_RESET}   ${_C_DIM}(cod)${_C_RESET}  ${_C_DIM}openai agents only${_C_RESET}          ${_C_CYAN}${V}${_C_RESET}"
-  echo -e "${_C_CYAN}${V}${_C_RESET}   ${_C_BOLD}${_C_BYELLOW}4${_C_RESET}  ${_C_YELLOW}$_NTM_ICON_GEMINI${_C_RESET}  ${_C_BWHITE}Gemini${_C_RESET}  ${_C_DIM}(gmi)${_C_RESET}  ${_C_DIM}google agents only${_C_RESET}          ${_C_CYAN}${V}${_C_RESET}"
+  echo -e "${_C_CYAN}${V}${_C_RESET}   ${_C_BOLD}${_C_BMAGENTA}4${_C_RESET}  ${_C_MAGENTA}$_NTM_ICON_AGY${_C_RESET}  ${_C_BWHITE}Antigravity${_C_RESET}  ${_C_DIM}(agy)${_C_RESET}  ${_C_DIM}Gemini 3.1 Pro agents${_C_RESET}    ${_C_CYAN}${V}${_C_RESET}"
+  echo -e "${_C_CYAN}${V}${_C_RESET}   ${_C_BOLD}${_C_BYELLOW}5${_C_RESET}  ${_C_YELLOW}$_NTM_ICON_GEMINI${_C_RESET}  ${_C_BWHITE}Gemini${_C_RESET}  ${_C_DIM}(gmi)${_C_RESET}  ${_C_DIM}google agents (legacy)${_C_RESET}      ${_C_CYAN}${V}${_C_RESET}"
   echo -e "${_C_CYAN}${V}${_C_RESET}                                                          ${_C_CYAN}${V}${_C_RESET}"
-  echo -e "${_C_CYAN}${V}${_C_RESET}   ${_C_BOLD}${_C_BCYAN}5${_C_RESET}  ${_C_CYAN}$_NTM_ICON_PANE${_C_RESET}  ${_C_BWHITE}Specific Pane${_C_RESET}  ${_C_DIM}choose one pane${_C_RESET}            ${_C_CYAN}${V}${_C_RESET}"
+  echo -e "${_C_CYAN}${V}${_C_RESET}   ${_C_BOLD}${_C_BCYAN}6${_C_RESET}  ${_C_CYAN}$_NTM_ICON_PANE${_C_RESET}  ${_C_BWHITE}Specific Pane${_C_RESET}  ${_C_DIM}choose one pane${_C_RESET}            ${_C_CYAN}${V}${_C_RESET}"
   echo -e "${_C_CYAN}${V}${_C_RESET}                                                          ${_C_CYAN}${V}${_C_RESET}"
   echo -e "${_C_CYAN}${V}${_C_RESET}   ${_C_BOLD}${_C_RED}q${_C_RESET}  ${_C_RED}$_NTM_ICON_CROSS${_C_RESET}  ${_C_DIM}Cancel${_C_RESET}                                       ${_C_CYAN}${V}${_C_RESET}"
   echo -e "${_C_CYAN}${V}${_C_RESET}                                                          ${_C_CYAN}${V}${_C_RESET}"
   echo -e "${_C_BOLD}${_C_CYAN}${BL}$(printf '%*s' $width '' | tr ' ' "$H")${BR}${_C_RESET}"
   echo ""
-  echo -ne "  ${_C_BOLD}${_C_CYAN}$_NTM_ICON_ARROW${_C_RESET} ${_C_BWHITE}Choice${_C_RESET} ${_C_DIM}[1-5, q]:${_C_RESET} "
+  echo -ne "  ${_C_BOLD}${_C_CYAN}$_NTM_ICON_ARROW${_C_RESET} ${_C_BWHITE}Choice${_C_RESET} ${_C_DIM}[1-6, q]:${_C_RESET} "
 }
 
 # Show pane selector with visual styling
@@ -2088,6 +2118,9 @@ _ntm_show_pane_selector() {
     elif [[ "$title" == *"__cod"* ]]; then
       color="$_C_BLUE"
       icon="$_NTM_ICON_CODEX"
+    elif [[ "$title" == *"__agy"* ]]; then
+      color="$_C_MAGENTA"
+      icon="$_NTM_ICON_AGY"
     elif [[ "$title" == *"__gmi"* ]]; then
       color="$_C_YELLOW"
       icon="$_NTM_ICON_GEMINI"
@@ -2225,10 +2258,14 @@ ntm-palette() {
       echo -e "\n${_C_BLUE}$_NTM_ICON_CHECK${_C_RESET} ${_C_BOLD}Sent to Codex agents${_C_RESET}"
       ;;
     4)
+      broadcast-prompt "$session" "agy" "$cmd_prompt"
+      echo -e "\n${_C_MAGENTA}$_NTM_ICON_CHECK${_C_RESET} ${_C_BOLD}Sent to Antigravity agents${_C_RESET}"
+      ;;
+    5)
       broadcast-prompt "$session" "gmi" "$cmd_prompt"
       echo -e "\n${_C_YELLOW}$_NTM_ICON_CHECK${_C_RESET} ${_C_BOLD}Sent to Gemini agents${_C_RESET}"
       ;;
-    5)
+    6)
       local first_win
       first_win=$(_ntm_first_window "$session" 2>/dev/null) || first_win="0"
 
@@ -2362,7 +2399,8 @@ ntm-palette-interactive() {
   local targets="${_NTM_ICON_ALL}:all:$_NTM_ICON_ALL  All Agents          │ broadcast to all panes
 ${_NTM_ICON_CLAUDE}:cc:$_NTM_ICON_CLAUDE  Claude (cc)        │ anthropic agents only
 ${_NTM_ICON_CODEX}:cod:$_NTM_ICON_CODEX  Codex (cod)        │ openai agents only
-${_NTM_ICON_GEMINI}:gmi:$_NTM_ICON_GEMINI  Gemini (gmi)       │ google agents only"
+${_NTM_ICON_AGY}:agy:$_NTM_ICON_AGY  Antigravity (agy)  │ Gemini 3.1 Pro agents
+${_NTM_ICON_GEMINI}:gmi:$_NTM_ICON_GEMINI  Gemini (gmi)       │ google agents (legacy)"
 
   local target_selection
   target_selection=$(echo "$targets" | \
@@ -2517,7 +2555,7 @@ ntm-palette-quick() {
   selected_prompt=$(echo "$selected_prompt" | sed 's/\\n/\n/g')
 
   echo ""
-  echo "Send to: [a]ll [c]laude co[d]ex [g]emini [q]uit"
+  echo "Send to: [a]ll [c]laude co[d]ex antigravit[y] [g]emini [q]uit"
   printf "Choice: "
   local target
   read -r target
@@ -2526,6 +2564,7 @@ ntm-palette-quick() {
     a|A) broadcast-prompt "$session" "all" "$selected_prompt" ;;
     c|C) broadcast-prompt "$session" "cc" "$selected_prompt" ;;
     d|D) broadcast-prompt "$session" "cod" "$selected_prompt" ;;
+    y|Y) broadcast-prompt "$session" "agy" "$selected_prompt" ;;
     g|G) broadcast-prompt "$session" "gmi" "$selected_prompt" ;;
     q|Q|"") echo "Cancelled" ;;
     *) echo "Invalid target" >&2; return 1 ;;
@@ -2585,22 +2624,22 @@ ntm() {
   echo -e "      ${Y}cnt myproject 10${R}"
   echo -e "      ${M}Create empty session with N panes${R}"
   echo ""
-  echo -e "  ${B}${C}spawn-agents-in-named-tmux${R} ${D}(sat)${R} ${G}<session> <cc> <cod> [gmi]${R}"
-  echo -e "      ${Y}sat myproject 6 6 2${R}"
+  echo -e "  ${B}${C}spawn-agents-in-named-tmux${R} ${D}(sat)${R} ${G}<session> <cc> <cod> [agy] [gmi]${R}"
+  echo -e "      ${Y}sat myproject 6 6 2 0${R}"
   echo -e "      ${M}Create session and launch agents${R}"
   echo ""
-  echo -e "  ${B}${C}quick-project-setup${R} ${D}(qps)${R} ${G}<project> [cc=2] [cod=2] [gmi=0]${R}"
-  echo -e "      ${Y}qps myproject 3 3 1${R}"
+  echo -e "  ${B}${C}quick-project-setup${R} ${D}(qps)${R} ${G}<project> [cc=2] [cod=2] [agy=0] [gmi=0]${R}"
+  echo -e "      ${Y}qps myproject 3 3 1 0${R}"
   echo -e "      ${M}Create dir, git init, spawn agents - all in one${R}"
   echo ""
 
   echo -e "  ${B}AGENT MANAGEMENT${R}"
   echo ""
-  echo -e "  ${B}${C}add-agents-to-named-tmux${R} ${D}(ant)${R} ${G}<session> <cc> <cod> [gmi]${R}"
-  echo -e "      ${Y}ant myproject 2 0 0${R}"
+  echo -e "  ${B}${C}add-agents-to-named-tmux${R} ${D}(ant)${R} ${G}<session> <cc> <cod> [agy] [gmi]${R}"
+  echo -e "      ${Y}ant myproject 2 0 0 0${R}"
   echo -e "      ${M}Add more agents to existing session${R}"
   echo ""
-  echo -e "  ${B}${C}broadcast-prompt${R} ${D}(bp)${R} ${G}<session> <cc|cod|gmi|all> <prompt>${R}"
+  echo -e "  ${B}${C}broadcast-prompt${R} ${D}(bp)${R} ${G}<session> <cc|cod|agy|gmi|all> <prompt>${R}"
   echo -e "      ${Y}bp myproject cc \"fix the linting errors\"${R}"
   echo -e "      ${M}Send prompt to all agents of a type${R}"
   echo ""
@@ -2627,14 +2666,14 @@ ntm() {
   echo -e "      ${Y}vnt myproject${R}"
   echo -e "      ${M}Unzoom, tile all panes, and attach${R}"
   echo ""
-  echo -e "  ${B}${C}zoom-pane-in-named-tmux${R} ${D}(znt)${R} ${G}<session> <pane|cc|cod|gmi>${R}"
+  echo -e "  ${B}${C}zoom-pane-in-named-tmux${R} ${D}(znt)${R} ${G}<session> <pane|cc|cod|agy|gmi>${R}"
   echo -e "      ${Y}znt myproject cc${R}"
   echo -e "      ${M}Zoom to a specific pane or first agent of type${R}"
   echo ""
 
   echo -e "  ${B}COMMANDS & OUTPUT${R}"
   echo ""
-  echo -e "  ${B}${C}send-command-to-named-tmux${R} ${D}(sct)${R} ${G}[-s] [--cc|--cod|--gmi] <session> <cmd>${R}"
+  echo -e "  ${B}${C}send-command-to-named-tmux${R} ${D}(sct)${R} ${G}[-s] [--cc|--cod|--agy|--gmi] <session> <cmd>${R}"
   echo -e "      ${Y}sct -s myproject \"git status\"${R}"
   echo -e "      ${Y}sct --cc myproject \"/exit\"${R}"
   echo -e "      ${M}Send command to panes (-s skips user pane, --agent filters)${R}"
