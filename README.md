@@ -457,7 +457,7 @@ The toolkit defines these convenient aliases for the AI CLI tools:
 | Alias | Expands To |
 |-------|------------|
 | `cc` | `claude --dangerously-skip-permissions` (with 32GB Node heap) |
-| `cod` | `codex --dangerously-bypass-approvals-and-sandbox -m gpt-5.1-codex-max` |
+| `cod` | `codex --dangerously-bypass-approvals-and-sandbox --model gpt-5.6-sol` |
 | `gmi` | `gemini --yolo` |
 
 These aliases are used when spawning agents in panes.
@@ -811,7 +811,7 @@ The default aliases can be overridden by redefining them **after** the toolkit b
 alias cc='claude --model claude-sonnet-4'
 
 # Add custom Codex flags
-alias cod='codex -m o3 --approval-mode full-auto'
+alias cod='codex --model gpt-5.6-sol -c model_reasoning_effort="ultra" -c plan_mode_reasoning_effort="ultra"'
 
 # Gemini with specific project
 alias gmi='gemini --sandbox'
